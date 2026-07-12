@@ -1,0 +1,35 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: dynacat-cm
+  labels:
+    app.kubernetes.io/instance: dynacat
+    app.kubernetes.io/name: dynacat-cm
+    app.kubernetes.io/part-of: dynacat
+data:
+  user.css: |
+    {{- if $.Values.css }}
+      {{ $.Values.css | toYaml | nindent 4 }}
+    {{- end }}
+    
+  dynacat.yml: |
+    {{- if $.Values.config.server }}
+    server:
+      {{ $.Values.config.server | toYaml | nindent 4 }}
+    {{- end }}
+
+    theme:
+      {{- if $.Values.config.server }}
+        {{ $.Values.config.theme | toYaml | nindent 4 }}
+      {{- end }}
+      custom-css-file: /app/config/user.css
+
+    pages:
+    {{- range page, pagecontent := $.Values.pages }}
+      - $include: {{ page }}.yml
+    {{- end }}
+
+{{- range page, pagecontent := $.Values.pages }}
+  {{ page }}.yml: |
+    {{ $pagecontent | toYaml | nindent 4 }}
+{{- end }}

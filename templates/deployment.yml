@@ -1,0 +1,174 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: dynacat
+  labels:
+    app.kubernetes.io/name: dynacat
+    app.kubernetes.io/instance: dynacat
+    app.kubernetes.io/version: 2.4.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: dynacat
+      app.kubernetes.io/name: dynacat
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: dynacat
+        app.kubernetes.io/name: dynacat
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: dynacat
+          image: {{ $.Values.image.repository }}:{{ $.Values.image.tag }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            {{- if $.Values.selfhstIcons.enabled }}
+            - name: SH
+              {{- if $.Values.selfhstIcons.dynacatInternal }}
+              value: /assets/icons/
+              {{- else }}
+              value: http://selfhst-icons.{{ $.Release.Namespace }}.svc.cluster.local
+              {{- end }}
+            {{- end }}
+            {{- with $.Values.extraEnv }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+
+          {{- with $.Values.extraEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+            
+          {{- with $.Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+              scheme: HTTP
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+              scheme: HTTP
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+
+          securityContext: {}
+          volumeMounts:
+            - name: dynacat-config
+              readOnly: true
+              mountPath: /app/config
+            {{- with $.Values.extraVolumeMounts }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- if and $.Values.selfhstIcons.enabled $.Values.selfhstIcons.dynacatInternal }}
+            - name: icons-data
+              mountPath: {{ include icons.path . }}
+            {{- end }}
+      volumes:
+        - name: dynacat-config
+          configMap:
+            name: dynacat-cm
+        {{- if and $.Values.selfhstIcons.enabled $.Values.selfhstIcons.dynacatInternal }}
+        - name: icons-data
+          persistentVolumeClaim:
+            claimName: selfhst-icons-data
+        {{- end }}
+        {{- with $.Values.extraVolumes }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+      securityContext: {}
+{{- if and $.Values.selfhstIcons.enabled (not $.Values.selfhstIcons.dynacatInternal) }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: selfhst-icons
+  labels:
+    app.kubernetes.io/part-of: dynacat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: selfhst-icons
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: selfhst-icons
+        app.kubernetes.io/part-of: dynacat
+    spec:
+      containers:
+        - name: selfhst-icons
+          image: ghcr.io/selfhst/icons:latest
+          imagePullPolicy: Always
+          env:
+            - name: ICON_SOURCE
+              value: "local"
+            - name: PORT
+              value: "4050"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: CACHE_TTL
+              value: "3600"
+            - name: CACHE_SIZE
+              value: "500"
+          ports:
+            - containerPort: 4050
+              name: http
+          volumeMounts:
+            - name: icons-data
+              mountPath: /app/icons/svg
+              subPath: svg
+            - name: icons-data
+              mountPath: /app/icons/png
+              subPath: png
+            - name: icons-data
+              mountPath: /app/icons/webp
+              subPath: webp
+            - name: icons-data
+              mountPath: /app/icons/avif
+              subPath: avif
+            - name: icons-data
+              mountPath: /app/icons/ico
+              subPath: ico
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 4050
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4050
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+      volumes:
+        - name: icons-data
+          persistentVolumeClaim:
+            claimName: selfhst-icons-data
+{{ end }}

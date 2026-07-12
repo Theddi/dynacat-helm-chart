@@ -1,0 +1,62 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: selfhst-icons-data
+  app.kubernetes.io/part-of: dynacat
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ $.Values.selfhstIcons.pvc.sizeRequest }}
+  storageClassName: {{ $.Values.selfhstIcons.pvc.storageClass }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: selfhst-icons-init
+  labels:
+    app.kubernetes.io/part-of: dynacat
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: clone-icons
+          image: alpine/git:latest
+          command:
+            - sh
+            - -c
+            - |
+              git clone --depth 1 https://github.com/selfhst/icons.git /icons-repo
+            {{- if }} &&
+              mkdir -p {{ range type := $.Values.selfhstIcons.iconFileTypes }}{{ include icons.path . }}/{{ type }} {{ end }} &&
+              {{- range type := $.Values.selfhstIcons.iconFileTypes }}
+              cp -r /icons-repo/{{ type }}/* {{ include icons.path . }}/{{ type }}/ 2>/dev/null || true {{ if not loop.last }}&&{{ end }}
+              {{- end }}
+            {{ else }}
+              for ext in {{ range type := $.Values.selfhstIcons.iconFileTypes }}{{ type }} {{ end }}; do
+                mkdir -p "/icons/${ext}"
+
+                # Only process if the source directory exists
+                [ -d "/icons-repo/${ext}" ] || continue
+
+                for src in /icons-repo/${ext}/*; do
+                  [ -f "$src" ] || continue
+
+                  filename=$(basename "$src")
+                  # Strip everything from the last dot onward
+                  dest_name="${filename%.*}"
+
+                  cp "$src" "{{ include icons.path . }}/${ext}/${dest_name}"
+                done
+              done
+            {{ end }}
+          volumeMounts:
+            - name: icons-data
+              mountPath: {{ include icons.path . }}
+      volumes:
+        - name: icons-data
+          persistentVolumeClaim:
+            claimName: selfhst-icons-data

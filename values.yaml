@@ -1,0 +1,51 @@
+# Default domain
+global:
+  domain: example.com
+
+image:
+  repository: panonim/dynacat
+  tag: 2.4.0
+
+config:
+  server:
+    assets-path: /app/config
+    proxied: true
+
+  theme: null
+    # background-color: 240 21 15
+    # contrast-multiplier: 1.0
+    # primary-color: 217 92 83
+    # positive-color: 115 54 20
+    # negative-color: 347 70 65
+
+
+pages:
+  home:
+
+css: null
+
+extraEnv: []
+extraEnvFrom: []
+
+selfhstIcons:
+  enabled: true
+  dynacatInternal: true
+  pvc: # requires ~<500Mi storage capacity
+    sizeRequest: 500Mi
+    storageClass: local
+  iconFileTypes:
+    - svg
+    - png
+    - webp
+    - avif
+    - ico
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 128Mi
+
+extraVolumes: []
+extraVolumeMounts: []
