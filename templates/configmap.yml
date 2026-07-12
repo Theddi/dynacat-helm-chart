@@ -1,35 +1,32 @@
-kind: ConfigMap
 apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: dynacat-cm
+  name: {{ include "dynacat.fullname" . }}-config
   labels:
-    app.kubernetes.io/instance: dynacat
-    app.kubernetes.io/name: dynacat-cm
-    app.kubernetes.io/part-of: dynacat
+    {{- include "dynacat.labels" . | nindent 4 }}
 data:
+  {{- with .Values.css }}
   user.css: |
-    {{- if $.Values.css }}
-      {{ $.Values.css | toYaml | nindent 4 }}
-    {{- end }}
-    
+    {{- . | nindent 4 }}
+  {{- end }}
   dynacat.yml: |
-    {{- if $.Values.config.server }}
-    server:
-      {{ $.Values.config.server | toYaml | nindent 4 }}
+    {{- $config := deepCopy (.Values.config | default dict) }}
+    {{- if .Values.css }}
+      {{- $theme := $config.theme | default dict }}
+      {{- $_ := set $theme "custom-css-file" "/assets/user.css" }}
+      {{- $_ := set $config "theme" $theme }}
     {{- end }}
-
-    theme:
-      {{- if $.Values.config.server }}
-        {{ $.Values.config.theme | toYaml | nindent 4 }}
-      {{- end }}
-      custom-css-file: /app/config/user.css
-
+    {{- range $section, $content := $config }}
+    {{- if $content }}
+    {{ $section }}:
+      {{- $content | toYaml | nindent 6 }}
+    {{- end }}
+    {{- end }}
     pages:
-    {{- range page, pagecontent := $.Values.pages }}
-      - $include: {{ page }}.yml
+    {{- range $name, $_ := .Values.pages }}
+      - $include: {{ $name }}.yml
     {{- end }}
-
-{{- range page, pagecontent := $.Values.pages }}
-  {{ page }}.yml: |
-    {{ $pagecontent | toYaml | nindent 4 }}
-{{- end }}
+  {{- range $name, $content := .Values.pages }}
+  {{ $name }}.yml: |
+    {{- $content | required (printf "pages.%s must contain the page definition (name, columns, ...)" $name) | toYaml | nindent 4 }}
+  {{- end }}

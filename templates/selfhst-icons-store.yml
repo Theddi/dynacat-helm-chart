@@ -1,62 +1,81 @@
----
+{{- if .Values.selfhstIcons.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: selfhst-icons-data
-  app.kubernetes.io/part-of: dynacat
+  name: {{ include "dynacat.icons.fullname" . }}
+  labels:
+    {{- include "dynacat.labels" . | nindent 4 }}
+    app.kubernetes.io/component: selfhst-icons
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: {{ $.Values.selfhstIcons.pvc.sizeRequest }}
-  storageClassName: {{ $.Values.selfhstIcons.pvc.storageClass }}
+      storage: {{ .Values.selfhstIcons.pvc.sizeRequest }}
+  {{- with .Values.selfhstIcons.pvc.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: selfhst-icons-init
+  name: {{ include "dynacat.icons.fullname" . }}-init
   labels:
-    app.kubernetes.io/part-of: dynacat
+    {{- include "dynacat.labels" . | nindent 4 }}
+    app.kubernetes.io/component: selfhst-icons
+  annotations:
+    # Re-runs on every install/upgrade; the script itself decides whether a
+    # refresh is needed (see selfhstIcons.refreshOnUpgrade).
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
 spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 86400
   template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: selfhst-icons
     spec:
       restartPolicy: OnFailure
       containers:
-        - name: clone-icons
-          image: alpine/git:latest
+        - name: fetch-icons
+          image: {{ .Values.selfhstIcons.initImage }}
           command:
             - sh
-            - -c
+            - -ec
             - |
-              git clone --depth 1 https://github.com/selfhst/icons.git /icons-repo
-            {{- if }} &&
-              mkdir -p {{ range type := $.Values.selfhstIcons.iconFileTypes }}{{ include icons.path . }}/{{ type }} {{ end }} &&
-              {{- range type := $.Values.selfhstIcons.iconFileTypes }}
-              cp -r /icons-repo/{{ type }}/* {{ include icons.path . }}/{{ type }}/ 2>/dev/null || true {{ if not loop.last }}&&{{ end }}
+              layout="{{ ternary "flat" "by-ext" .Values.selfhstIcons.dynacatInternal }}"
+              {{- if not .Values.selfhstIcons.refreshOnUpgrade }}
+              if [ "$(cat /icons/.layout 2>/dev/null || true)" = "$layout" ]; then
+                echo "Icons already present in '$layout' layout, skipping."
+                echo "Set selfhstIcons.refreshOnUpgrade=true to force a refresh."
+                exit 0
+              fi
               {{- end }}
-            {{ else }}
-              for ext in {{ range type := $.Values.selfhstIcons.iconFileTypes }}{{ type }} {{ end }}; do
-                mkdir -p "/icons/${ext}"
-
-                # Only process if the source directory exists
-                [ -d "/icons-repo/${ext}" ] || continue
-
-                for src in /icons-repo/${ext}/*; do
-                  [ -f "$src" ] || continue
-
-                  filename=$(basename "$src")
-                  # Strip everything from the last dot onward
-                  dest_name="${filename%.*}"
-
-                  cp "$src" "{{ include icons.path . }}/${ext}/${dest_name}"
-                done
+              echo "Fetching selfh.st icons ({{ join ", " .Values.selfhstIcons.iconFileTypes }})..."
+              git clone --depth 1 --filter=blob:none --sparse \
+                https://github.com/selfhst/icons.git /icons-repo
+              git -C /icons-repo sparse-checkout set {{ join " " .Values.selfhstIcons.iconFileTypes }}
+              # Clean slate so removed formats and layout switches leave no stale files
+              find /icons -mindepth 1 -delete
+              for ext in {{ join " " .Values.selfhstIcons.iconFileTypes }}; do
+                [ -d "/icons-repo/$ext" ] || continue
+              {{- if .Values.selfhstIcons.dynacatInternal }}
+                # Flat layout, served by dynacat as /assets/icons/<name>.<ext>
+                cp -r "/icons-repo/$ext/." /icons/
+              {{- else }}
+                # Per-format layout as expected by the selfh.st icons server
+                mkdir -p "/icons/$ext"
+                cp -r "/icons-repo/$ext/." "/icons/$ext/"
+              {{- end }}
               done
-            {{ end }}
+              echo "$layout" > /icons/.layout
+              echo "Done: $(find /icons -type f | wc -l) files."
           volumeMounts:
             - name: icons-data
-              mountPath: {{ include icons.path . }}
+              mountPath: /icons
       volumes:
         - name: icons-data
           persistentVolumeClaim:
-            claimName: selfhst-icons-data
+            claimName: {{ include "dynacat.icons.fullname" . }}
+{{- end }}

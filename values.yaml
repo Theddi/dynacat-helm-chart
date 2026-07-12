@@ -1,40 +1,126 @@
+replicaCount: 1
+
 image:
   repository: panonim/dynacat
-  tag: 2.4.0
+  # Defaults to the chart appVersion when empty
+  tag: ""
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 80
 
 config:
+  # https://dynacat.artur.zone/#configuration -> Server
   server:
-    assets-path: /app/config
+    # Directory dynacat serves under the /assets/ URL path. The selfh.st icons
+    # volume is mounted at <assets-path>/icons when selfhstIcons.dynacatInternal
+    # is true, and custom css (see `css` below) at <assets-path>/user.css.
+    assets-path: /app/assets
+    # Set true when running behind a reverse proxy / ingress / gateway
     proxied: true
+    # port: 8080  # containerPort and probes follow this value automatically
 
-  theme: null
+  # https://dynacat.artur.zone/#configuration -> Document
+  # Custom HTML injected into the <head> of every page
+  document: {}
+    # head: |
+    #   <script src="/assets/custom.js"></script>
+
+  # https://dynacat.artur.zone/#configuration -> Branding
+  branding: {}
+    # hide-footer: true
+    # logo-text: D
+    # app-name: "My Dashboard"
+    # app-icon-url: /assets/app-icon.png
+    # favicon-url: /assets/favicon.png
+    # custom-footer: |
+    #   <p>Powered by dynacat</p>
+
+  # https://dynacat.artur.zone/#configuration -> Theme (colors are HSL)
+  theme: {}
     # background-color: 240 21 15
     # contrast-multiplier: 1.0
     # primary-color: 217 92 83
     # positive-color: 115 54 20
     # negative-color: 347 70 65
 
-
+# Each key becomes its own <name>.yml file next to dynacat.yml and is included
+# via `- $include: <name>.yml`. Pages are included in alphabetical key order —
+# prefix the keys with numbers (e.g. 10-home, 20-media) to control tab order.
 pages:
-  home: null
+  home:
+    name: Home
+    columns:
+      - size: full
+        widgets:
+          - type: search
+            search-engine: kagi
+          # - type: monitor
+          #   title: Services
+          #   cache: 1m
+          #   sites:
+          #     - title: Immich
+          #       url: https://immich.example.com
+          #       icon: ${SH}immich.png
 
-css: null
+# Custom CSS. When set, it is served as /assets/user.css and wired into
+# theme.custom-css-file automatically.
+css: ""
+  # .widget-type-rss a {
+  #   font-size: 1.5rem;
+  # }
 
 extraEnv: []
 extraEnvFrom: []
 
+# Local copy of https://github.com/selfhst/icons
+# A Job (helm post-install/post-upgrade hook) fills a PVC via sparse git
+# checkout of the selected formats. The SH env var is injected into dynacat so
+# icons can be referenced as ${SH}<name>.<ext> in either mode, e.g.
+#   icon: ${SH}immich.png
 selfhstIcons:
   enabled: true
+  # true  -> icons are mounted into dynacat and served from its assets path
+  # false -> a separate selfh.st icons deployment + service serves them and
+  #          dynacat fetches them through its server-side image cache
   dynacatInternal: true
-  pvc: # requires ~<500Mi storage capacity
-    sizeRequest: 500Mi
-    storageClass: local
+  # Re-download the icon collection on every helm upgrade. When false, the job
+  # only fetches icons if the PVC is empty or the layout (internal/external)
+  # changed.
+  refreshOnUpgrade: false
+  initImage: alpine/git:latest
+  pvc:
+    # svg+png+webp need roughly 500Mi; all five formats need ~1Gi.
+    # The init job additionally needs about the same amount of free ephemeral
+    # storage on its node for the git checkout.
+    sizeRequest: 1Gi
+    # Empty -> cluster default StorageClass
+    storageClass: local-path
+  # Formats to fetch (sparse checkout — only these are downloaded).
+  # Available: svg, png, webp, avif, ico
   iconFileTypes:
     - svg
     - png
     - webp
     - avif
     - ico
+  # Only used when dynacatInternal is false
+  server:
+    image: ghcr.io/selfhst/icons:latest
+    imagePullPolicy: IfNotPresent
+    logLevel: info
+    cacheTtl: "3600"
+    cacheSize: "500"
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        memory: 256Mi
 
 resources:
   requests:
@@ -42,6 +128,13 @@ resources:
     memory: 32Mi
   limits:
     memory: 128Mi
+
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
 
 extraVolumes: []
 extraVolumeMounts: []

@@ -1,0 +1,79 @@
+{{- if and .Values.selfhstIcons.enabled (not .Values.selfhstIcons.dynacatInternal) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dynacat.icons.fullname" . }}
+  labels:
+    {{- include "dynacat.labels" . | nindent 4 }}
+    app.kubernetes.io/component: selfhst-icons
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "dynacat.icons.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "dynacat.icons.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: selfhst-icons
+          image: {{ .Values.selfhstIcons.server.image }}
+          imagePullPolicy: {{ .Values.selfhstIcons.server.imagePullPolicy }}
+          env:
+            - name: ICON_SOURCE
+              value: local
+            - name: PORT
+              value: "4050"
+            - name: LOG_LEVEL
+              value: {{ .Values.selfhstIcons.server.logLevel | quote }}
+            - name: CACHE_TTL
+              value: {{ .Values.selfhstIcons.server.cacheTtl | quote }}
+            - name: CACHE_SIZE
+              value: {{ .Values.selfhstIcons.server.cacheSize | quote }}
+          ports:
+            - name: http
+              containerPort: 4050
+              protocol: TCP
+          volumeMounts:
+            - name: icons-data
+              mountPath: /app/icons
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          {{- with .Values.selfhstIcons.server.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: icons-data
+          persistentVolumeClaim:
+            claimName: {{ include "dynacat.icons.fullname" . }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dynacat.icons.fullname" . }}
+  labels:
+    {{- include "dynacat.labels" . | nindent 4 }}
+    app.kubernetes.io/component: selfhst-icons
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: http
+  selector:
+    {{- include "dynacat.icons.selectorLabels" . | nindent 4 }}
+{{- end }}

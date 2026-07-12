@@ -1,33 +1,15 @@
----
-kind: Service
 apiVersion: v1
+kind: Service
 metadata:
-  name: dynacat
+  name: {{ include "dynacat.fullname" . }}
   labels:
-    app.kubernetes.io/instance: dynacat
-    app.kubernetes.io/name: dynacat
+    {{- include "dynacat.labels" . | nindent 4 }}
 spec:
-  type: ClusterIP
+  type: {{ .Values.service.type }}
   ports:
     - name: http
       protocol: TCP
-      port: 80
+      port: {{ .Values.service.port }}
       targetPort: http
   selector:
-    app.kubernetes.io/instance: dynacat
-    app.kubernetes.io/name: dynacat
-{{- if and $.Values.selfhstIcons.enabled (not $.Values.selfhstIcons.dynacatInternal) }}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: selfhst-icons
-spec:
-  selector:
-    app: selfhst-icons
-  ports:
-    - port: 80
-      targetPort: 4050
-      name: http
-  type: ClusterIP
-{{- end }}
+    {{- include "dynacat.selectorLabels" . | nindent 4 }}

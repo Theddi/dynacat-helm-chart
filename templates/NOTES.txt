@@ -1,0 +1,18 @@
+dynacat {{ .Values.image.tag | default .Chart.AppVersion }} has been deployed.
+
+Reach it via:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "dynacat.fullname" . }} 8080:{{ .Values.service.port }}
+  -> http://localhost:8080
+{{- if .Values.selfhstIcons.enabled }}
+
+selfh.st icons are enabled. Reference them in your pages as:
+  icon: ${SH}<name>.<ext>     e.g.  icon: ${SH}immich.png
+{{- if not .Values.selfhstIcons.dynacatInternal }}
+They are served by {{ include "dynacat.icons.fullname" . }} and fetched through
+dynacat's server-side image cache.
+{{- end }}
+
+The icon collection is downloaded by a post-install/post-upgrade job.
+Icons appear once it completes:
+  kubectl -n {{ .Release.Namespace }} logs -f job/{{ include "dynacat.icons.fullname" . }}-init
+{{- end }}

@@ -1,7 +1,16 @@
 apiVersion: v2
-name: dynacat-chart
+name: dynacat
 description: >-
-  Creates a dynacat deployment and makes use of templating for easier page and config management
+  Deploys the dynacat dashboard with templated page/config management and
+  optional self-hosted selfh.st icons.
 type: application
-version: 0.1.0
-appVersion: 2.4.0
+version: 0.2.0
+appVersion: "2.4.0"
+home: https://dynacat.artur.zone
+sources:
+  - https://github.com/Panonim/dynacat
+  - https://github.com/selfhst/icons
+keywords:
+  - dashboard
+  - dynacat
+  - homepage
