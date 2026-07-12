@@ -51,21 +51,21 @@ config:
 # Each key becomes its own <name>.yml file next to dynacat.yml and is included
 # via `- $include: <name>.yml`. Pages are included in alphabetical key order —
 # prefix the keys with numbers (e.g. 10-home, 20-media) to control tab order.
-pages:
-  home:
-    name: Home
-    columns:
-      - size: full
-        widgets:
-          - type: search
-            search-engine: kagi
-          # - type: monitor
-          #   title: Services
-          #   cache: 1m
-          #   sites:
-          #     - title: Immich
-          #       url: https://immich.example.com
-          #       icon: ${SH}immich.png
+pages: {}
+  # home:
+  #   name: Home
+  #   columns:
+  #     - size: full
+  #       widgets:
+  #         - type: search
+  #           search-engine: kagi
+  #         - type: monitor
+  #           title: Services
+  #           cache: 1m
+  #           sites:
+  #             - title: Immich
+  #               url: https://immich.example.com
+  #               icon: ${SH}immich.png
 
 # Custom CSS. When set, it is served as /assets/user.css and wired into
 # theme.custom-css-file automatically.
