@@ -4,7 +4,7 @@ description: >-
   Deploys the dynacat dashboard with templated page/config management and
   optional self-hosted selfh.st icons.
 type: application
-version: 0.2.0
+version: 0.3.0
 appVersion: "2.4.0"
 home: https://dynacat.artur.zone
 sources:

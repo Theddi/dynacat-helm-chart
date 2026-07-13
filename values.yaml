@@ -1,5 +1,12 @@
 replicaCount: 1
 
+# Configmap changes trigger Deployment restart
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
 image:
   repository: panonim/dynacat
   # Defaults to the chart appVersion when empty

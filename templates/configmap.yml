@@ -22,9 +22,11 @@ data:
       {{- $content | toYaml | nindent 6 }}
     {{- end }}
     {{- end }}
+    {{- if .Values.pages }}
     pages:
     {{- range $name, $_ := .Values.pages }}
       - $include: {{ $name }}.yml
+    {{- end }}
     {{- end }}
   {{- range $name, $content := .Values.pages }}
   {{ $name }}.yml: |

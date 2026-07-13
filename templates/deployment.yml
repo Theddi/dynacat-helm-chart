@@ -6,6 +6,10 @@ metadata:
     {{- include "dynacat.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  {{- with .Values.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "dynacat.selectorLabels" . | nindent 6 }}
@@ -57,14 +61,23 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 2
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /
               port: http
+            periodSeconds: 5
           readinessProbe:
             httpGet:
               path: /
               port: http
+            periodSeconds: 2
           volumeMounts:
             - name: config
               mountPath: /app/config
