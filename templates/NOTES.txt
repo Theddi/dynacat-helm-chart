@@ -1,8 +1,18 @@
 dynacat {{ .Values.image.tag | default .Chart.AppVersion }} has been deployed.
 
 Reach it via:
+{{- if .Values.httproute.enabled }}
+{{- range .Values.httproute.hostnames }}
+  https://{{ . }}   (via Gateway API HTTPRoute)
+{{- end }}
+{{- else if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else }}
   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "dynacat.fullname" . }} 8080:{{ .Values.service.port }}
   -> http://localhost:8080
+{{- end }}
 {{- if .Values.selfhstIcons.enabled }}
 
 selfh.st icons are enabled. Reference them in your pages as:

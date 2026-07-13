@@ -20,6 +20,38 @@ service:
   type: ClusterIP
   port: 80
 
+# Traditional Ingress. Use this OR httproute below, not both.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: dynacat.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: dynacat-tls
+    #   hosts:
+    #     - dynacat.example.com
+
+# Gateway API HTTPRoute (gateway.networking.k8s.io/v1). Alternative to ingress.
+# Requires the Gateway API CRDs and an existing Gateway in the cluster.
+httproute:
+  enabled: false
+  annotations: {}
+  # The Gateway(s) this route attaches to. name is required.
+  parentRefs:
+    - name: ""
+      # namespace: ""     # Gateway's namespace, if different from the release
+      # sectionName: ""   # Specific Gateway listener to bind
+  hostnames:
+    - dynacat.example.com
+  # Optional full rules override. When empty, a single rule forwards "/"
+  # (PathPrefix) to the dynacat service on service.port.
+  rules: []
+
 config:
   # https://dynacat.artur.zone/#configuration -> Server
   server:
