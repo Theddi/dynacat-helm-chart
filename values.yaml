@@ -123,6 +123,10 @@ extraEnvFrom: []
 #   icon: ${SH}immich.png
 selfhstIcons:
   enabled: true
+  # Use this, if you have cloned the repository 
+  # or otherwise changed the icons location
+  # Useful for offline/selfhosted purposes
+  iconsRepository: https://github.com/selfhst/icons.git
   # true  -> icons are mounted into dynacat and served from its assets path
   # false -> a separate selfh.st icons deployment + service serves them and
   #          dynacat fetches them through its server-side image cache

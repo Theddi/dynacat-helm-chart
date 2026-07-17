@@ -54,7 +54,7 @@ spec:
               {{- end }}
               echo "Fetching selfh.st icons ({{ join ", " .Values.selfhstIcons.iconFileTypes }})..."
               git clone --depth 1 --filter=blob:none --sparse \
-                https://github.com/selfhst/icons.git /icons-repo
+                {{ .Values.selfhstIcons.iconRepository }} /icons-repo
               git -C /icons-repo sparse-checkout set {{ join " " .Values.selfhstIcons.iconFileTypes }}
               # Clean slate so removed formats and layout switches leave no stale files
               find /icons -mindepth 1 -delete
