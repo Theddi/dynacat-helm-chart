@@ -1,3 +1,6 @@
+# Orphaned repo, chart has a new home !
+https://git.thed-co.de/Theddi/charts
+
 # Dynacat Helm Chart
 
 Deploys [dynacat](https://github.com/Panonim/dynacat) with templated config/page
